@@ -30,7 +30,7 @@
 
         assign sram_data = tb_drive_en ? tb_data_out : 'z;
 
-        v_sram dut 
+        sram_bank dut 
         (
             .sram_clk(sram_clk),
             .rst(rst),

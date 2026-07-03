@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-module v_sram #(
+module sram_bank #(
     //Widths:
     parameter DATA_WIDTH = 36,
     parameter ADDR_WIDTH = 21,

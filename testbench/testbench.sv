@@ -19,7 +19,6 @@ module v_sram #(
 
     input wire enable_i,    // 1: enable, 0: disable
 
-
     input wire op_mode_i,   // 1: write, 0: read
 
     //sram_data

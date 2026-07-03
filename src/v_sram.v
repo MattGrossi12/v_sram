@@ -1,4 +1,4 @@
-// Code your design here
+`timescale 1ns/1ps
 module v_sram #(
     //Widths:
     parameter DATA_WIDTH = 36,

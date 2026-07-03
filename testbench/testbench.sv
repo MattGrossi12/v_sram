@@ -1,82 +1,168 @@
-// Code your design here
-module v_sram #(
-    //Widths:
-    parameter DATA_WIDTH = 36,
-    parameter ADDR_WIDTH = 21,
-    parameter DATA_DEPTH = 1000000,
+    `timescale 1ns/1ps
 
-    //Trully-Widths:
-    parameter T_AW   = (ADDR_WIDTH - 1),
-    parameter T_DW   = (DATA_WIDTH - 1),
-    parameter T_DD   = (DATA_DEPTH - 1)
-)(
-    //sram_clk
-	input wire clk,  //Output of sram_clk send of mem_ctrl
-  	input wire rst,  //Assincronous reset
-  	
-    //sram_addr
-    input wire [T_AW:0] addr_i, // Data address
+    module testbench;
 
-    input wire enable_i,    // 1: enable, 0: disable
+        parameter DATA_WIDTH = 36;
+        parameter ADDR_WIDTH = 21;
+        parameter DATA_DEPTH = 1000000;
 
-    input wire op_mode_i,   // 1: write, 0: read
+        parameter T_AW = ADDR_WIDTH - 1;
+        parameter T_DW = DATA_WIDTH - 1;
+        parameter T_DD = DATA_DEPTH - 1;
 
-    //sram_data
-  	inout [T_DW:0] data_io  // Data to write/read
-);
+        logic sram_clk = 0;
+        logic rst;
 
-//FSM Gray-code based states:
-localparam IDLE       = 2'b00;
-localparam WRITE_MODE = 2'b01;
-localparam READ_MODE  = 2'b11;
+        logic [T_AW:0] sram_addr;
 
-reg [T_DW:0] data_bank [0:T_DD]; // Memory bank
-reg [1:0] next_state;
-reg [T_DW:0] temp_bank;
-  
-//FSM Control-path:
-always @(*)
-    begin
-        if (enable_i) // Control signal
+        logic sram_oe_n;
+        logic sram_we_n;
+
+        wire [T_DW:0] sram_data;
+
+        logic [T_DW:0] tb_data_out;
+        logic          tb_drive_en;
+        logic [T_DW:0] data_write;
+        logic [T_DW:0] data_read;
+        
+        int error = 0;
+        int passed = 0;
+
+        assign sram_data = tb_drive_en ? tb_data_out : 'z;
+
+        v_sram dut 
+        (
+            .sram_clk(sram_clk),
+            .rst(rst),
+            .sram_addr(sram_addr),
+            .sram_oe_n(sram_oe_n),
+            .sram_we_n(sram_we_n),
+            .sram_data(sram_data)
+        );
+
+        always #5 sram_clk = ~sram_clk;
+
+        task rst_task;
             begin
-                if (!op_mode_i) // Write mode
-                    begin
-                        next_state = WRITE_MODE;
-                    end 
-                else // Read mode
-                    begin
-                        next_state = READ_MODE;
-                    end
-            end 
-        else 
-            begin
-                next_state = IDLE;
+                rst = 1'b1;
+
+                sram_addr = '0;
+                sram_oe_n = 1'b0;
+                sram_we_n = 1'b0;
+                tb_data_out = '0;
+                tb_drive_en = 1'b0;
+
+                #10;
+
+                rst = 1'b0;
+
+                #10;
             end
-    end
+        endtask
 
-//FSM Data-path:
-always @(posedge clk or posedge rst)
-    begin
-        if (rst) 
+        task write_task(input [T_AW:0] addr, input [T_DW:0] data);
             begin
-                temp_bank <= {DATA_WIDTH{1'b0}}; // Reset memory bank
-            end 
-        else 
-            begin
-                case (next_state)
-                    WRITE_MODE: begin
-                        data_bank[addr_i] <= data_io; // Write data to memory
-                    end
-                    READ_MODE: begin
-                        temp_bank <= data_bank[addr_i]; // Read data from memory
-                    end
-                    default: begin
-                        temp_bank <= temp_bank; // Maintain current state
-                    end
-                endcase
+                sram_addr = addr;
+
+                tb_data_out = data;
+                tb_drive_en = 1'b1;
+
+                // Write: OE_n = 0, WE_n = 0
+                sram_oe_n = 1'b0;
+                sram_we_n = 1'b0;
+
+                @(posedge sram_clk);
+                #1;
+
+                tb_drive_en = 1'b0;
+
+                // Idle
+                sram_oe_n = 1'b1;
+                sram_we_n = 1'b1;
             end
-    end
+        endtask
 
-	assign data_io = (enable_i && !op_mode_i) ? temp_bank : {DATA_WIDTH{1'bz}}; // Tri-state buffer for data bus
+        task read_task(input [T_AW:0] addr, output [T_DW:0] data);
+            begin
+                sram_addr = addr;
 
-endmodule
+                tb_drive_en = 1'b0;
+
+                // Read: OE_n = 0, WE_n = 1
+                sram_oe_n = 1'b0;
+                sram_we_n = 1'b1;
+
+                @(posedge sram_clk);
+                #1;
+
+                data = sram_data;
+
+                // Idle
+                sram_oe_n = 1'b1;
+                sram_we_n = 1'b1;
+            end
+        endtask
+
+        task create_position(output [T_AW:0] sram_addr, output [T_DW:0] data);
+            begin
+                sram_addr = $urandom_range(0, T_DD);
+                data = {$urandom, $urandom};
+            end
+        endtask
+
+        task cp;
+            begin
+                create_position(sram_addr, data_write);
+            end
+        endtask
+
+        task wr_t;
+            begin
+                write_task(sram_addr, data_write);
+                $display("Writing data %h at address %h", data_write, sram_addr);
+                #30;
+            end
+        endtask
+
+        task rd_t;
+            begin
+                read_task(sram_addr, data_read);
+                $display("Reading data %h at address %h", data_read, sram_addr);
+                #30;
+            end
+        endtask
+
+        task check;
+            begin
+                if (data_read !== data_write) 
+                    begin
+                        $display("ERROR: expected %h, got %h at address %h",
+                                data_write, data_read, sram_addr);
+                        error = error + 1;
+                    end
+                else 
+                    begin
+                        $display("OK: data matched at address %h", sram_addr);
+                        passed = passed + 1;
+                    end
+            end
+        endtask
+
+        initial begin
+            rst_task();
+
+            repeat(1000) 
+                begin
+                    cp();
+                    wr_t();
+                    rd_t();
+                    check();                
+                end
+
+            $display("Total passed: %d", passed);
+            $display("Total error: %d", error);
+        
+            $finish;
+        end
+
+    endmodule

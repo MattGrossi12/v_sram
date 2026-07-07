@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-module sram_bank #(
+module sram_top #(
     //Widths:
     parameter DATA_WIDTH = 36,
     parameter ADDR_WIDTH = 21,
@@ -20,6 +20,12 @@ module sram_bank #(
   	inout [T_DW:0] sram_data  // Data to write/read
 );
 
+wire [T_AW:0] sram_addr_iw = sram_addr;
+wire [T_AW:0] sram_addr_ow;
+wire [T_AW:0] sram_addr_bus;
+
+assign sram_addr_bus = sram_adv_ld_n ? sram_addr : sram_addr_ow;
+
     sram_burst      #(
                     .DATA_WIDTH     (DATA_WIDTH),
                     .ADDR_WIDTH     (ADDR_WIDTH),
@@ -28,8 +34,8 @@ module sram_bank #(
                     .sram_clk       (sram_clk),
                     .rst            (rst),
                     .sram_adv_ld_n  (sram_adv_ld_n),
-                    .sram_addr_i    (sram_addr_i),
-                    .sram_addr_o    (sram_addr_o)
+                    .sram_addr_i    (sram_addr_iw),
+                    .sram_addr_o    (sram_addr_ow)
                     );
 
     sram_bank       #(
@@ -39,7 +45,7 @@ module sram_bank #(
                     ) sbk (
                     .sram_clk       (sram_clk),
                     .rst            (rst),  
-                    .sram_addr      (sram_addr),
+                    .sram_addr      (sram_addr_bus),
                     .sram_we_n      (sram_we_n),
                     .sram_oe_n      (sram_oe_n),
                     .sram_data      (sram_data)

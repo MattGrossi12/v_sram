@@ -22,16 +22,16 @@ module sram_bank #(
 );
 
 //FSM Gray-code based states:
-localparam IDLE       = 2'b00;
-localparam WRITE_MODE = 2'b01;
-localparam READ_MODE  = 2'b11;
+localparam IDLE  = 2'b00;
+localparam WRITE = 2'b01;
+localparam READ  = 2'b11;
 
 //States:
 reg [1:0]       next_state;
 reg [T_DW:0]    temp_bank;
 
 //Memory Banks:
-reg [T_DW:0]    data_bank [0:T_BQ]      [0:T_DD]; 
+reg [T_DW:0] data_bank [0:T_BQ] [0:T_DD]; 
 /*Data width    Quantity of Banks       Memory array depth */
 
 //--------------------------------------------------------------------------------------------------------------
@@ -42,11 +42,11 @@ always @(*)
             begin
                 if (!sram_we_n) // Write mode
                     begin
-                        next_state = WRITE_MODE;
+                        next_state = WRITE;
                     end 
                 else // Read mode
                     begin
-                        next_state = READ_MODE;
+                        next_state = READ;
                     end
             end 
         else 
@@ -66,12 +66,12 @@ always @(posedge sram_clk or posedge rst)
         else 
             begin
                 case (next_state)
-                    WRITE_MODE: 
+                    WRITE: 
                     begin
                         if(!sram_ce_i)  data_bank[0] <= sram_data; // Write data to memory bank A
                         else            data_bank[1] <= sram_data; // Write data to memory bank B
                     end
-                    READ_MODE: 
+                    READ: 
                     begin
                         if(!sram_ce_i)  temp_bank <= data_bank[0]; // Read data from memory bank A
                         else            temp_bank <= data_bank[1]; // Read data from memory bank B

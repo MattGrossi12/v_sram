@@ -1,4 +1,4 @@
-# sram_addr_cache
+# sram_burst
 Modelo virtualizado de cache/registrador de endereço para suporte auxiliar a operações em modo burst em uma SRAM.
 
 O bloco não armazena dados. Ele registra um endereço interno temporário (`sram_addr_t`) e disponibiliza esse endereço na saída `sram_addr_o`, podendo ser usado como estágio auxiliar para alimentar o endereço de um banco SRAM durante uma sequência de acesso.
@@ -48,7 +48,7 @@ subgraph Top-level-view
 
 
 
-    subgraph BURST["sram_addr_cache"]
+    subgraph BURST["sram_burst"]
         TOP["Top-level"]
     end
 
@@ -77,7 +77,7 @@ end
 
 ## Comportamento esperado pelo bloco
 
-O `sram_addr_cache` modela um registrador de endereço auxiliar. Seu objetivo é armazenar um endereço temporário que pode ser usado por outro bloco, como o `sram_bank`, durante uma operação sequencial ou de burst.
+O `sram_burst` modela um registrador de endereço auxiliar. Seu objetivo é armazenar um endereço temporário que pode ser usado por outro bloco, como o `sram_bank`, durante uma operação sequencial ou de burst.
 
 A operação é feita de forma síncrona na borda de subida de `sram_clk`, com reset assíncrono ativo em nível baixo:
 

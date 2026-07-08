@@ -31,7 +31,8 @@ assign sram_addr_bus = sram_adv_ld_n ? sram_addr : sram_addr_ow;
     sram_burst      #(
                     .DATA_WIDTH     (DATA_WIDTH),
                     .ADDR_WIDTH     (ADDR_WIDTH),
-                    .DATA_DEPTH     (DATA_DEPTH)
+                    .DATA_DEPTH     (DATA_DEPTH),
+                    .BANK_QUANT     (BANK_QUANT)
                     ) sbt (
                     .sram_clk       (sram_clk),
                     .rst            (rst),
@@ -43,7 +44,8 @@ assign sram_addr_bus = sram_adv_ld_n ? sram_addr : sram_addr_ow;
     sram_bank       #(
                     .DATA_WIDTH     (DATA_WIDTH),
                     .ADDR_WIDTH     (ADDR_WIDTH),
-                    .DATA_DEPTH     (DATA_DEPTH)
+                    .DATA_DEPTH     (DATA_DEPTH),
+                    .BANK_QUANT     (BANK_QUANT)
                     ) sbk (
                     .sram_clk       (sram_clk),
                     .rst            (rst),  

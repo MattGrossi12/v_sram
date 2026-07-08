@@ -44,7 +44,7 @@
         
         task rst_task;
             begin
-                rst = 1'b1;
+                rst = 1'b0;
 
                 sram_addr   = '0;
                 sram_oe_n   = '0;
@@ -54,7 +54,7 @@
 
                 #10;
 
-                rst = 1'b0;
+                rst = 1'b1;
 
                 #10;
             end
@@ -123,14 +123,14 @@
                 if(!sram_ce_i)
                     begin
                         div();
-                        $display("Writing data %h at address %h on the Bank A", data_write, sram_addr);
+                        $display("|                   Writing data %05h at address %05h on the Bank A                       |", data_write, sram_addr);
                         bank_a_wr_count = bank_a_wr_count + 1;
                         #30;
                     end
                 else
                     begin
                         div();
-                        $display("Writing data %h at address %h on the Bank B", data_write, sram_addr);
+                        $display("|                  Writing data %05h at address %05h on the Bank B                        |", data_write, sram_addr);
                         bank_b_wr_count = bank_b_wr_count + 1;
                         #30;
                     end
@@ -161,12 +161,12 @@
             begin
                 if (data_read !== data_write) 
                     begin
-                        $display(" ERROR: expected %h, got %h at address %h", data_write, data_read, sram_addr);
+                        $display(" ERROR: expected %05h, got %h at addr %05h |", data_write, data_read, sram_addr);
                         error = error + 1;
                     end
                 else 
                     begin
-                        $display(" OK: data matched at address %h", sram_addr);
+                        $display("   OK: data matched at address %05h  |", sram_addr);
                         passed = passed + 1;
                     end
             end
@@ -183,14 +183,15 @@
                     check();                
                 end
 
-            $write("Total passed: %05d | ", passed);
-            $display("Total error: %05d", error);
             div();
-            $write("Wrotes on A bank: %05d | ", bank_a_wr_count);
-            $display("Wrotes on B bank: %05d", bank_b_wr_count);
+            $display("|                             Total passed: %05d | Total error: %05d                       |", 
+            passed, error);
             div();
-            $write("Reads on A bank: %05d | ", bank_a_rd_count);
-            $display("Reads on B bank: %05d", bank_b_rd_count);
+            $display("|                        Wrotes on A bank: %05d | Wrotes on B bank: %05d                   |", 
+            bank_a_wr_count, bank_b_wr_count);
+            div();
+            $display("|                           Reads on A bank: %05d | Reads on B bank: %05d                  |", 
+            bank_a_rd_count, bank_b_rd_count);
             div();
             $finish;
         end

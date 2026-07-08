@@ -57,9 +57,9 @@ always @(*)
 
 //--------------------------------------------------------------------------------------------------------------
 //FSM Data-path:
-always @(posedge sram_clk or posedge rst)
+always @(posedge sram_clk or negedge rst)
     begin
-        if (rst) 
+        if (!rst) 
             begin
                 temp_bank <= {DATA_WIDTH{1'b0}}; // Reset memory bank
             end 
@@ -68,13 +68,13 @@ always @(posedge sram_clk or posedge rst)
                 case (next_state)
                     WRITE: 
                     begin
-                        if(!sram_ce_i)  data_bank[0] <= sram_data; // Write data to memory bank A
-                        else            data_bank[1] <= sram_data; // Write data to memory bank B
+                        if(!sram_ce_i)  data_bank[0][sram_addr] <= sram_data; // Write data to memory bank A
+                        else            data_bank[1][sram_addr] <= sram_data; // Write data to memory bank B
                     end
                     READ: 
                     begin
-                        if(!sram_ce_i)  temp_bank <= data_bank[0]; // Read data from memory bank A
-                        else            temp_bank <= data_bank[1]; // Read data from memory bank B
+                        if(!sram_ce_i)  temp_bank <= data_bank[0][sram_addr]; // Read data from memory bank A
+                        else            temp_bank <= data_bank[1][sram_addr]; // Read data from memory bank B
                     end
                     default: 
                     begin

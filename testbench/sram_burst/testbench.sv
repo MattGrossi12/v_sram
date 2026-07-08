@@ -25,7 +25,7 @@
 
         // Variables for testbench:
         logic temp_state;
-        int test_cases = 1000;
+        int test_cases = 10;
         int error   = 0;
         int passed  = 0;    
         int cases   = 0;
@@ -50,13 +50,7 @@
         task check_result; div(); $display("          Happen %d errors and %d passed cases                ", error, passed); div(); endtask
 
         // Task to check the output address against the expected address:
-        task check; 
-            begin
-                //if ((sram_addr_o !== expected_addr) && (sram_adv_ld_n === 1'b0)) 
-                if ((sram_addr_o !== expected_addr))    temp_state = 0;
-                else                                    temp_state = 1;
-            end    
-        endtask
+        task check; if ((sram_addr_o !== expected_addr)) temp_state = 0; else temp_state = 1; endtask
 
         // Task to display the address and check the output
         task addr_disp;

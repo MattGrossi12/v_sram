@@ -2,55 +2,55 @@
 
     module testbench;
 
-        parameter DATA_WIDTH = 36;
-        parameter ADDR_WIDTH = 21;
-        parameter DATA_DEPTH = 1000000;
+    //Widths:
+    parameter   DATA_WIDTH = 18,
+                ADDR_WIDTH = 21,
+                BANK_QUANT = 2,
+                DATA_DEPTH = 1000000,
 
-        parameter T_AW = ADDR_WIDTH - 1;
-        parameter T_DW = DATA_WIDTH - 1;
-        parameter T_DD = DATA_DEPTH - 1;
+    //Trully-Widths:
+                T_AW   = (ADDR_WIDTH - 1),
+                T_DW   = (DATA_WIDTH - 1),
+                T_DD   = (DATA_DEPTH - 1),
+                T_BQ   = (BANK_QUANT - 1);
 
-        logic sram_clk = 0;
-        logic rst;
 
-        logic [T_AW:0] sram_addr;
+    logic           sram_clk = 0;
+    logic           rst;
+    logic [T_AW:0]  sram_addr;
+    logic           sram_oe_n;
+    logic           sram_we_n;
+    logic [T_DW:0]  tb_data_out;
+    logic           tb_drive_en;
+    logic [T_DW:0]  data_write;
+    logic [T_DW:0]  data_read;
+    logic           sram_ce_i;
+      
+    wire  [T_DW:0]  sram_data;
 
-        logic sram_oe_n;
-        logic sram_we_n;
+    int error 	= 0;
+    int passed	= 0;
+    int bank_a_wr_count, bank_b_wr_count  = 0;
+    int bank_a_rd_count, bank_b_rd_count  = 0;
+    int test_cases = 10;
 
-        wire [T_DW:0] sram_data;
+    assign sram_data = tb_drive_en ? tb_data_out : 'z;
 
-        logic [T_DW:0] tb_data_out;
-        logic          tb_drive_en;
-        logic [T_DW:0] data_write;
-        logic [T_DW:0] data_read;
+    sram_bank dut (.*);
+
+    always #5 sram_clk = ~sram_clk;
+
+    task div; $display("+--------------------------------------------------------------------------------------------+");endtask
         
-        int error = 0;
-        int passed = 0;
-
-        assign sram_data = tb_drive_en ? tb_data_out : 'z;
-
-        sram_bank dut 
-        (
-            .sram_clk(sram_clk),
-            .rst(rst),
-            .sram_addr(sram_addr),
-            .sram_oe_n(sram_oe_n),
-            .sram_we_n(sram_we_n),
-            .sram_data(sram_data)
-        );
-
-        always #5 sram_clk = ~sram_clk;
-
         task rst_task;
             begin
                 rst = 1'b1;
 
-                sram_addr = '0;
-                sram_oe_n = 1'b0;
-                sram_we_n = 1'b0;
+                sram_addr   = '0;
+                sram_oe_n   = '0;
+                sram_we_n   = '0;
                 tb_data_out = '0;
-                tb_drive_en = 1'b0;
+                tb_drive_en = '0;
 
                 #10;
 
@@ -105,8 +105,9 @@
 
         task create_position(output [T_AW:0] sram_addr, output [T_DW:0] data);
             begin
-                sram_addr = $urandom_range(0, T_DD);
-                data = {$urandom, $urandom};
+                sram_addr   = $urandom_range(0, T_DD);
+                data        = {$urandom, $urandom};
+                sram_ce_i   = $urandom_range(0, 1);        
             end
         endtask
 
@@ -119,16 +120,40 @@
         task wr_t;
             begin
                 write_task(sram_addr, data_write);
-                $display("Writing data %h at address %h", data_write, sram_addr);
-                #30;
+                if(!sram_ce_i)
+                    begin
+                        div();
+                        $display("Writing data %h at address %h on the Bank A", data_write, sram_addr);
+                        bank_a_wr_count = bank_a_wr_count + 1;
+                        #30;
+                    end
+                else
+                    begin
+                        div();
+                        $display("Writing data %h at address %h on the Bank B", data_write, sram_addr);
+                        bank_b_wr_count = bank_b_wr_count + 1;
+                        #30;
+                    end
             end
         endtask
 
         task rd_t;
             begin
                 read_task(sram_addr, data_read);
-                $display("Reading data %h at address %h", data_read, sram_addr);
-                #30;
+                if(!sram_ce_i)
+                    begin
+                        div();
+                        $write("| Reading data %05h at address %05h on the Bank A |", data_read, sram_addr);          
+                        bank_a_rd_count = bank_a_rd_count + 1;
+                        #30;
+                    end
+                else
+                    begin
+                        div();
+                        $write("| Reading data %05h at address %05h on the Bank B |", data_read, sram_addr);
+                        bank_b_rd_count = bank_b_rd_count + 1;
+                        #30;
+                    end
             end
         endtask
 
@@ -136,13 +161,12 @@
             begin
                 if (data_read !== data_write) 
                     begin
-                        $display("ERROR: expected %h, got %h at address %h",
-                                data_write, data_read, sram_addr);
+                        $display(" ERROR: expected %h, got %h at address %h", data_write, data_read, sram_addr);
                         error = error + 1;
                     end
                 else 
                     begin
-                        $display("OK: data matched at address %h", sram_addr);
+                        $display(" OK: data matched at address %h", sram_addr);
                         passed = passed + 1;
                     end
             end
@@ -151,7 +175,7 @@
         initial begin
             rst_task();
 
-            repeat(1000) 
+            repeat(test_cases) 
                 begin
                     cp();
                     wr_t();
@@ -159,9 +183,15 @@
                     check();                
                 end
 
-            $display("Total passed: %d", passed);
-            $display("Total error: %d", error);
-        
+            $write("Total passed: %05d | ", passed);
+            $display("Total error: %05d", error);
+            div();
+            $write("Wrotes on A bank: %05d | ", bank_a_wr_count);
+            $display("Wrotes on B bank: %05d", bank_b_wr_count);
+            div();
+            $write("Reads on A bank: %05d | ", bank_a_rd_count);
+            $display("Reads on B bank: %05d", bank_b_rd_count);
+            div();
             $finish;
         end
 

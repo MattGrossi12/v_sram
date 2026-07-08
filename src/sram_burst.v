@@ -1,14 +1,16 @@
 `timescale 1ns/1ps
 module sram_burst #(
     //Widths:
-    parameter DATA_WIDTH = 36,
+    parameter DATA_WIDTH = 18,
     parameter ADDR_WIDTH = 21,
+    parameter BANK_QUANT = 2,
     parameter DATA_DEPTH = 1000000,
 
     //Trully-Widths:
     parameter T_AW   = (ADDR_WIDTH - 1),
     parameter T_DW   = (DATA_WIDTH - 1),
-    parameter T_DD   = (DATA_DEPTH - 1)
+    parameter T_DD   = (DATA_DEPTH - 1),
+    parameter T_BQ   = (BANK_QUANT - 1)
 )(
 	input wire sram_clk,  //Output of sram_sram_clk send of mem_ctrl
   	input wire rst,  //Assincronous reset

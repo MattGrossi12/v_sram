@@ -45,6 +45,7 @@ module testbench;
 
     always #5 sram_clk = ~sram_clk;
     task div; $display("+-------------------------------------------------------------------------------------------------------+");endtask
+    task div_ch; $display("+=======================================================================================================+");endtask
 
     task rst_task;
         begin
@@ -61,7 +62,7 @@ module testbench;
     endtask
 
     // Checker phase
-    task check_result; div(); $display("          Happen %d errors and %d passed cases                ", error, passed); div(); endtask
+    task check_result; $display("|                                  Happen %05d errors and %05d passed cases                           |", error, passed); div_ch(); endtask
 
     // Burst mode control:
     task on_bt;  sram_adv_ld_n = '0; endtask
@@ -177,8 +178,8 @@ module testbench;
 
     task scoreboard;
         begin
-            rst_task();
-            div();
+            //rst_task();
+            div_ch();
             $display("|                                Total passed: %05d | Total error: %05d                               |", 
             passed, error);
             div();
@@ -187,8 +188,7 @@ module testbench;
             div();
             $display("|                             Reads on A bank: %05d | Reads on B bank: %05d                           |", 
             bank_a_rd_count, bank_b_rd_count);
-            div();
-            $finish;
+            div_ch();
         end
     endtask
 
@@ -217,10 +217,10 @@ module testbench;
                     cp();
                     wr_t();
                     rd_t();
-                    coverage(); 
-                    scoreboard();               
+                    coverage();               
                 end
             #500;
+            scoreboard(); 
             check_result();
             $finish;
         end
@@ -228,8 +228,4 @@ module testbench;
 
     // Initial block to start the test routine
     initial test_routine();
-
-
-
-
 endmodule

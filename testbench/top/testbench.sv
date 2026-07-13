@@ -12,6 +12,10 @@ module testbench;
                 T_DD   = (DATA_DEPTH - 1),
                 T_BQ   = (BANK_QUANT - 1);
 
+    localparam  RM = 2'b00,
+                BA = 2'b01,
+                BB = 2'b10;
+
 	logic           sram_clk = 0;           //Output of sram_sram_clk send of mem_ctrl
   	logic           rst;                    //Assincronous reset
     logic [T_AW:0]  sram_addr;              // Data address
@@ -30,22 +34,18 @@ module testbench;
 
     //Constrainsts:
     int test_cases  = 10;
-    int bank_mode   = 0;
     int error 	    = 0;
     int passed	    = 0;
     int bank_a_wr_count, bank_b_wr_count  = 0;
     int bank_a_rd_count, bank_b_rd_count  = 0;
-
-    localparam  RM = 2'b00,
-                BA = 2'b01,
-                BB = 2'b10;
-
+    int bank_mode = RM;
+    int bank_used = 0;
 
     sram_top dut (.*);
 
     always #5 sram_clk = ~sram_clk;
-    task div; $display("+-------------------------------------------------------------------------------------------------------+");endtask
-    task div_ch; $display("+=======================================================================================================+");endtask
+    task div;       $display("+-------------------------------------------------------------------------------------------------------+");endtask
+    task div_ch;    $display("+=======================================================================================================+");endtask
 
     task rst_task;
         begin
@@ -69,25 +69,60 @@ module testbench;
     task off_bt; sram_adv_ld_n = '1; endtask
 
     // Bank selection:
-    task random_bank;   sram_ce_i = $urandom_range(0, 1);   endtask
-    task bank_a_s;      sram_ce_i = 0;                      endtask
-    task bank_b_s;      sram_ce_i = 1;                      endtask
+    task random_bank;   
+        begin
+            bank_used = $urandom_range(0, 1);
+        end
+    endtask
+    
+    task bank_a_s;      
+        begin   
+            bank_used = 0;
+        end
+    endtask
+
+    task bank_b_s;      
+        begin
+            bank_used = 1;       
+        end
+    endtask
 
     task bank_selection(input [1:0] bank_mode);
         begin
             case(bank_mode)
-                RM: random_bank();
-                BA: bank_a_s();
-                BB: bank_b_s();
-                default: random_bank();
+                RM: 
+                    begin
+                        random_bank();      
+                        sram_ce_i = bank_used;
+                    end
+                BA: 
+                    begin
+                        bank_a_s();
+                        sram_ce_i = bank_used;
+                    end
+                BB: 
+                    begin
+                        bank_b_s();         
+                        sram_ce_i = bank_used;
+                    end
+                default: 
+                    begin
+                        random_bank();
+                        sram_ce_i = bank_used;
+                    end
             endcase
         end
     endtask
 
     // Write-test:
-    task write_task(input [T_AW:0] addr, input [T_DW:0] data, input [1:0] bank_mode);
+    task write_task
+        (
+            input [T_AW:0]  addr, 
+            input [T_DW:0]  data, 
+            input           bank_used
+        );
         begin
-            bank_selection(bank_mode);
+
             sram_addr   = addr;
             tb_data_out = data;
             tb_drive_en = 1'b1;
@@ -103,42 +138,7 @@ module testbench;
                 sram_oe_n   = 1'b1;
                 sram_we_n   = 1'b1;
             end
-        endtask
 
-    // Read-test:
-    task read_task(input [T_AW:0] addr, output [T_DW:0] data, input [1:0] bank_mode);
-        begin
-
-            bank_selection(bank_mode);
-            sram_addr = addr;
-            tb_drive_en = 1'b0;
-            
-            // Read: OE_n = 0, WE_n = 1
-            sram_oe_n = 1'b0;
-            sram_we_n = 1'b1;
-
-            @(posedge sram_clk);
-                #1;
-                data = sram_data;
-                // Idle
-                sram_oe_n = 1'b1;
-                sram_we_n = 1'b1;
-            end
-        endtask
-
-    task create_position(output [T_AW:0] sram_addr, output [T_DW:0] data);
-        begin
-            sram_addr   = $urandom_range(0, T_DD);
-            data        = {$urandom, $urandom};
-            sram_ce_i   = $urandom_range(0, 1);        
-        end
-    endtask
-
-    task cp; create_position(sram_addr, data_write); endtask
-
-    task wr_t;
-        begin
-            write_task(sram_addr, data_write, BA);
             if(!sram_ce_i)
                 begin
                     div();
@@ -153,16 +153,37 @@ module testbench;
                     bank_b_wr_count = bank_b_wr_count + 1;
                     #30;
                 end
-            end
+
         endtask
 
-    task rd_t;
+    // Read-test:
+    task read_task
+        (
+            input   [T_AW:0]    addr,
+            input               bank,
+            output  [T_DW:0]    data
+        );
+
         begin
-            read_task(sram_addr, data_read, BA);
+            sram_addr = addr;
+            tb_drive_en = 1'b0;
+            
+            // Read: OE_n = 0, WE_n = 1
+            sram_oe_n = 1'b0;
+            sram_we_n = 1'b1;
+
+            @(posedge sram_clk);
+                #1;
+                data = sram_data;
+                // Idle
+                sram_oe_n = 1'b1;
+                sram_we_n = 1'b1;
+            end
+
             if(!sram_ce_i)
                 begin
                     div();
-                    $write("| Reading data %05h at address %05h on the Bank A |", data_read, sram_addr);          
+                    $write("| Reading data %05h at address %05h on the Bank A |", data_read, sram_addr);         
                     bank_a_rd_count = bank_a_rd_count + 1;
                     #30;
                 end
@@ -173,6 +194,21 @@ module testbench;
                     bank_b_rd_count = bank_b_rd_count + 1;
                     #30;
                 end
+        endtask
+
+    task create_position(output [T_AW:0] sram_addr, output [T_DW:0] data);
+        begin
+            sram_addr   = $urandom_range(0, T_DD);
+            data        = {$urandom, $urandom};
+            bank_selection(bank_mode);
+        end
+    endtask
+
+    task cp; 
+        begin
+            create_position(sram_addr, data_write); 
+            write_task(sram_addr, data_write, bank_used);
+            read_task(sram_addr, bank_used, data_read);
         end
     endtask
 
@@ -215,8 +251,6 @@ module testbench;
             repeat(test_cases) 
                 begin
                     cp();
-                    wr_t();
-                    rd_t();
                     coverage();               
                 end
             #500;

@@ -24,9 +24,7 @@ module sram_top #(
 
 wire [T_AW:0] sram_addr_iw = sram_addr;
 wire [T_AW:0] sram_addr_ow;
-wire [T_AW:0] sram_addr_bus;
-
-assign sram_addr_bus = sram_adv_ld_n ? sram_addr : sram_addr_ow;
+wire [T_AW:0] sram_addr_bus = sram_adv_ld_n ? sram_addr : sram_addr_ow;
 
     sram_burst      #(
                     .DATA_WIDTH     (DATA_WIDTH),

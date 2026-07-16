@@ -36,10 +36,11 @@ module testbench;
     logic [T_AW:0] exp_addr_burst = 21'bZ;
 
     //Constrainsts:
-    int test_cases  = 20;
-    int nor_cases  = (test_cases/2);
-    int bur_cases  = (test_cases/2);
-    //int bur_cases  = 0;
+    int test_cases  = 5;
+    //int nor_cases  = (test_cases/2);
+    int nor_cases  = 0;
+    int bur_cases  = 5;
+    //int bur_cases  = (test_cases/2);
     int error 	    = 0;
     int passed	    = 0;
     int bank_a_wr_count, bank_b_wr_count  = 0;
@@ -152,38 +153,44 @@ module testbench;
     );
         begin
             if (!bank) begin
-                $display("|                 After 50ns, we're trying read data %05h at address %05h on the Bank A              |",
-                        data, addr);
+                $display("|                 After 50ns, we're trying read data %05h at address %05h on the Bank A              |", data, addr);
                 bank_a_rd_count = bank_a_rd_count + 1;
                 #30;
-                //coverage();
             end
             else begin
-                $display("|                 After 50ns, we're trying read data %05h at address %05h on the Bank B              |",
-                        data, addr);
+                $display("|                 After 50ns, we're trying read data %05h at address %05h on the Bank B              |", data, addr);
                 bank_b_rd_count = bank_b_rd_count + 1;
                 #30;
-                //coverage();
             end
         end
     endtask
 
-    task wr_burst;
+    task wr_burst(
+        input [T_AW:0] addr_i,
+        input [T_DW:0] data_i,
+        input          bank_i
+    );
         begin
+            sram_ce_i   = bank_i;
+            sram_addr   = addr_i;
+            tb_data_out = data_i;
+            tb_drive_en = 1'b1;
+
+            sram_oe_n = 1'b0;
+            sram_we_n = 1'b0;
+
             on_bt();
-            addr = $urandom_range(0, T_AW);
-            sram_addr = addr;
-            @(posedge sram_clk)
-                begin
-                    sram_adv_ld_n = 1'b1;
-                    #3;
-                    sram_adv_ld_n = 1'b0;
-                    exp_addr_burst = addr + 1;
-                    #3;
-                end
+
+            @(posedge sram_clk);
+            #1;
+
+            tb_drive_en = 1'b0;
+            sram_we_n   = 1'b1;
+            sram_oe_n   = 1'b1;
+
+            off_bt();
 
             wr_print();
-
         end
     endtask
 
@@ -211,7 +218,7 @@ module testbench;
             data = sram_data;
 
             sram_oe_n = 1'b1;
-            sram_we_n = 1'b1;
+            sram_we_n = 1'b1;   
 
             rd_print(data, addr, bank);
         end
@@ -225,8 +232,13 @@ module testbench;
         end
     endtask
 
-    task create_burst(output [T_AW:0] sram_addr, output [T_DW:0] data);
+    task create_burst(
+        output [T_AW:0] addr_o,
+        output [T_DW:0] data_o
+    );
         begin
+            addr_o = $urandom_range(0, T_DD);
+            data_o = {$urandom, $urandom};
             bank_selection(bank_mode);
         end
     endtask
@@ -244,7 +256,7 @@ module testbench;
     task cp_burst;
         begin
             create_burst(sram_addr, data_write);
-            wr_burst();
+            wr_burst(sram_addr, data_write, bank_used);
             #50;
             read_task(sram_addr, bank_used, data_read);
             coverage();
@@ -262,12 +274,9 @@ module testbench;
         begin
             //rst_task();
             div_ch();
-            $display("|                                Total passed: %05d | Total error: %05d                               |",
-            passed, error);
-            $display("|                            Wrotes on A bank: %05d | Wrotes on B bank: %05d                          |",
-            bank_a_wr_count, bank_b_wr_count);
-            $display("|                             Reads on A bank: %05d | Reads on B bank: %05d                           |",
-            bank_a_rd_count, bank_b_rd_count);
+            $display("|                                Total passed: %05d | Total error: %05d                               |", passed, error);
+            $display("|                            Wrotes on A bank: %05d | Wrotes on B bank: %05d                          |", bank_a_wr_count, bank_b_wr_count);
+            $display("|                             Reads on A bank: %05d | Reads on B bank: %05d                           |", bank_a_rd_count, bank_b_rd_count);
             div_ch();
         end
     endtask

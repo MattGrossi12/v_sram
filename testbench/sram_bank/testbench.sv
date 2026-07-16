@@ -32,7 +32,8 @@
     int passed	= 0;
     int bank_a_wr_count, bank_b_wr_count  = 0;
     int bank_a_rd_count, bank_b_rd_count  = 0;
-    int test_cases = 10;
+    int test_cases = 500;
+    int i = 0;
 
     assign sram_data = tb_drive_en ? tb_data_out : 'z;
 
@@ -45,7 +46,7 @@
         task rst_task;
             begin
                 rst = 1'b0;
-
+                
                 sram_addr   = '0;
                 sram_oe_n   = '0;
                 sram_we_n   = '0;
@@ -177,6 +178,7 @@
 
             repeat(test_cases) 
                 begin
+
                     cp();
                     wr_t();
                     rd_t();

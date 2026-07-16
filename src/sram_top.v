@@ -35,6 +35,7 @@ wire [T_AW:0] sram_addr_bus = sram_adv_ld_n ? sram_addr : sram_addr_ow;
                     .sram_clk       (sram_clk),
                     .rst            (rst),
                     .sram_adv_ld_n  (sram_adv_ld_n),
+                    .sram_we_n      (sram_we_n),
                     .sram_addr_i    (sram_addr_iw),
                     .sram_addr_o    (sram_addr_ow)
                     );

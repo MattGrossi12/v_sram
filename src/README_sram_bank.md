@@ -1,5 +1,5 @@
 # v_sram
-Modelo virtualizado de sram, implementei o suporte ao burst mode e a compatibilidade com múltiplos bancos de memória, agora irei testar o funcionamento do topo da sram.
+Modelo virtualizado de sram, ainda não possui suporte ao burst mode, estou vendo como irei implementar isso.
 
 ## Esboço de topo do bloco
 

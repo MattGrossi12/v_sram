@@ -42,7 +42,7 @@ always @(*)
 //Address counter:
 always @(posedge sram_clk or negedge rst)
     begin
-        if (rst) 
+        if (!rst) 
             begin
                 sram_addr_t <= {ADDR_WIDTH{1'b0}};
                 sram_addr_o <= {ADDR_WIDTH{1'b0}};

@@ -29,6 +29,7 @@
         int error   = 0;
         int passed  = 0;    
         int cases   = 0;
+        int nw_ad   = 0;
 
         // Instantiate the SRAM burst module
         sram_burst dut 
@@ -48,15 +49,17 @@
         task div; $display("+--------------------------------------------------------------------------------------------+");endtask
         task header; div(); $display("| Address Written | adv_ld_n |  Address Expected  | Address Read |  T_S  | Situation | Cases |"); div(); endtask
         task check_result; div(); $display("          Happen %d errors and %d passed cases                ", error, passed); div(); endtask
+        task IDLE; sram_adv_ld_n = 1; endtask
+        task LOAD; sram_adv_ld_n = 0; endtask
 
-        // Task to check the output address against the expected address:
-        task check; if ((sram_addr_o !== expected_addr)) temp_state = 0; else temp_state = 1; endtask
 
         // Task to display the address and check the output
         task addr_disp;
             begin
+                if ((sram_addr_o !== expected_addr)) temp_state = 0; else temp_state = 1;
                 cases = cases + 1;
-                if(temp_state == 0)
+                #1;
+                if(temp_state === 0)
                     begin
                         error = error + 1;
                         $display("|      %6h     |    %1b     |       %6h       |     %6h   |   %b   |   ERROR   | %05d |", addr, sram_adv_ld_n, expected_addr, sram_addr_o, temp_state, cases);
@@ -69,30 +72,40 @@
             end
         endtask
 
-        // Task to write an address and check the output
-        task addr_wr;
+        task addr_wr_op;
             begin
                 addr_disp();
-                check();
-                addr = $urandom_range(0, T_AW);
+                if (nw_ad === 1) nw_addr_wr(); else addr = addr;
                 sram_addr_i = addr;
+                LOAD();
+
                 @(posedge sram_clk)
                     begin
-                        sram_adv_ld_n = 1'b1;
-                        #3;
-                        sram_adv_ld_n = 1'b0;
+                        #7;
+                        IDLE();
                         expected_addr = addr + 1;
-                        #3;
+                        #7;
                     end
             end
         endtask
+
+        // Task to write an address and check the output
+        task nw_addr_wr; addr = $urandom_range(0, T_AW); endtask
 
         // Main test routine to execute the test cases
         task test_routine;
             begin
                 header();
                 rst_task();
-                repeat(test_cases) #100 addr_wr();
+
+                    //Test with new address of cycle:
+                    nw_ad = 1;
+                    repeat(test_cases) #100 addr_wr_op();
+
+                    //Test improve automatically the address (burst-mode):
+                    nw_ad = 0;
+                    repeat(test_cases) #100 addr_wr_op();
+
                 #500;
                 check_result();
                 $finish;

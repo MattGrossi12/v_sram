@@ -3,7 +3,7 @@
     module testbench;
 
         // Parameters for the SRAM burst module
-        localparam DATA_WIDTH = 36;
+        localparam DATA_WIDTH = 18;
         localparam ADDR_WIDTH = 21;
         localparam DATA_DEPTH = 1000000;
 
@@ -23,10 +23,12 @@
         // Variables for address generation:
         logic [T_AW:0] addr;
         logic [T_AW:0] expected_addr = 21'bZ;
+        logic [T_AW:0] expected_read = 21'bZ;
 
         // Variables for testbench:
         logic temp_state;
         int test_cases = 30;
+        int round = 4;
         int error   = 0;
         int passed  = 0;    
         int cases   = 0;
@@ -78,7 +80,8 @@
         // Task to display the address and check the output
         task disp;
             begin
-                $monitor("|  %1d  |      %6h     |    %1b     |       %6h       |     %6h   |   %b   | %05d |", sram_clk, sram_addr_i, sram_adv_ld_n, expected_addr, sram_addr_o, temp_state, cases);
+                $monitor("|  %1d  |      %6h     |    %1b     |       %6h       |     %6h   |   %b   | %05d |", 
+                sram_clk, sram_addr_i, sram_adv_ld_n, expected_read, sram_addr_o, temp_state, cases);
             end
         endtask
 
@@ -114,9 +117,18 @@
             SEND_ADDR();
 
             @(posedge sram_clk);
+            expected_read <= expected_addr;
             #1;
+
         end
     endtask
+
+        task ch;
+            begin
+                if(expected_read == sram_addr_o) temp_state = 1; else temp_state = 0;
+            end
+        endtask
+
 
         task mult_inc;
             begin
@@ -150,8 +162,14 @@
                 header();
                 disp();
                 rst_task();
-                mult_inc();
-                mult_idle();
+                
+                repeat(round)
+                    begin
+                        //ch();
+                        mult_inc();
+                        mult_idle();
+                    end
+
                 #500;
                 check_result();
                 $finish;
